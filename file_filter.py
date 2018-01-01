@@ -35,11 +35,11 @@ def select_files(folder_path, num_page=20, num_src_file=30, num_target_file=20):
     for i in range(num_page):  # 遍历num_page个类别
         for j, file_name in enumerate(file_list[i]):  # 遍历每个类别中的每个文件
             cnt = 0
-            for k in range(10):  # 随机选择当前类别的10个文件和当前文件比较大小
+            for k in range(num_src_file-num_target_file):  # 随机选择当前类别的num_src_file-num_target_file个文件和当前文件比较大小
                 if abs(os.path.getsize(folder_path + file_name) - os.path.getsize(
                         folder_path + file_list[i][random.randint(0, num_src_file - 1)])) > 102400:
                     cnt += 1
-            if cnt > 5:  # 如果和超过半数文件大小差异大，则判为异常，进行标记
+            if cnt > (num_src_file-num_target_file)/2:  # 如果和超过半数文件大小差异大，则判为异常，进行标记
                 mark_list[i][j] = 1
 
     # 检测，如果有超过10个不正常文件，则说明数据本身可能有问题
