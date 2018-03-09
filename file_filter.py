@@ -31,29 +31,54 @@ def select_files(folder_path, num_page=20, num_src_file=30, num_target_file=20):
             cnt = 0
             page_type += 1
 
+    # 标记异常文件
+    size_diff = 51200  # 初始化的文件大小差异为512KB
     # 遍历每一个列表，标记出异常文件
-    for i in range(num_page):  # 遍历num_page个类别
-        for j, file_name in enumerate(file_list[i]):  # 遍历每个类别中的每个文件
+    for i in range(num_page):  # 遍历num_page个网页
+        for j, file_name in enumerate(file_list[i]):  # 遍历每个网页对应的每个文件
             cnt = 0
-            for k in range(num_src_file - num_target_file):  # 随机选择当前类别的num_src_file-num_target_file个文件和当前文件比较大小
+            for k in range(num_src_file - num_target_file):  # 随机选择当前网页的num_src_file-num_target_file个文件和当前文件比较大小
                 if abs(os.path.getsize(folder_path + file_name) - os.path.getsize(
-                        folder_path + file_list[i][random.randint(0, num_src_file - 1)])) > 102400:
+                        folder_path + file_list[i][random.randint(0, num_src_file - 1)])) > size_diff:
                     cnt += 1
             if cnt > (num_src_file - num_target_file) / 2:  # 如果和超过半数文件大小差异大，则判为异常，进行标记
                 mark_list[i][j] = 1
 
-    # 检测，如果有超过10个不正常文件，则说明数据本身可能有问题
-    wrong = False
-    for i in range(num_page):
-        cnt = 0
+        # 标记完当前网页的异常文件之后，进行统计
+        num_outlier = 0
         for mark in mark_list[i]:
-            cnt += mark
-        print cnt
-        if cnt > num_src_file - num_target_file:
-            wrong = True
-            print 'There may be something wrong with "' + '-'.join(file_list[i][0].split('-')[0:2]) + '"'
-    if wrong:  # 如果数据本身有问题，则退出
-        return
+            num_outlier += mark
+        if num_outlier <= num_src_file - num_target_file:
+            print str(num_outlier) + '(' + str(size_diff / 1024) + 'KB)' + '-'.join(file_list[i][0].split('-')[0:2])
+        else:  # 对于当前网页，文件大小差异较大，需调整size_diff的值继续筛选
+            this_size_diff = size_diff
+            print str(num_outlier) + '(' + str(this_size_diff / 1024) + 'KB)' + '-'.join(
+                file_list[i][0].split('-')[0:2])
+            while True:
+                # 将当前网页对应的异常文件标记置0
+                for m in range(len(mark_list[i])):
+                    mark_list[i][m] = 0
+
+                # 增大size_diff，对当前网页继续筛选
+                this_size_diff += 51200
+                for j, file_name in enumerate(file_list[i]):  # 遍历当前网页的每个文件
+                    cnt = 0
+                    for k in range(
+                            num_src_file - num_target_file):  # 随机选择当前网页的num_src_file-num_target_file个文件和当前文件比较大小
+                        if abs(os.path.getsize(folder_path + file_name) - os.path.getsize(
+                                folder_path + file_list[i][random.randint(0, num_src_file - 1)])) > this_size_diff:
+                            cnt += 1
+                    if cnt > (num_src_file - num_target_file) / 2:  # 如果和超过半数文件大小差异大，则判为异常，进行标记
+                        mark_list[i][j] = 1
+
+                # 重新统计增大size_diff的值后，当前网页异常文件的数量
+                num_outlier = 0
+                for mark in mark_list[i]:
+                    num_outlier += mark
+                print str(num_outlier) + '(' + str(this_size_diff / 1024) + 'KB)' + '-'.join(
+                    file_list[i][0].split('-')[0:2])
+                if num_outlier <= num_src_file - num_target_file:  # 可以筛选出当前网页的目标文件，退出while循环
+                    break
 
     # 遍历文件，剔除异常文件
     for i in range(num_page):
